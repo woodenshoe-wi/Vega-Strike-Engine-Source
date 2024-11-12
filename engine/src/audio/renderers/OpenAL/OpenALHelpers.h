@@ -29,15 +29,18 @@
 #include "../../Exceptions.h"
 #include "al.h"
 
-#define checkAlErrorCode(error) Audio::__impl::OpenAL::_checkAlErrorAt((error), __FILE__, __LINE__)
-#define checkAlError() Audio::__impl::OpenAL::_checkAlErrorAt(alGetError(), __FILE__, __LINE__)
+#define checkAlError() Audio::__impl::OpenAL::_checkAlErrorAt(alGetError(), __FILE__, __LINE__, true)
+#define checkAlWarning() Audio::__impl::OpenAL::_checkAlErrorAt(alGetError(), __FILE__, __LINE__, false)
+#define checkAlcError(x) Audio::__impl::OpenAL::_checkAlcErrorAt(x, __FILE__, __LINE__, true)
+#define checkAlcWarning(x) Audio::__impl::OpenAL::_checkAlcErrorAt(x, __FILE__, __LINE__, false)
 #define clearAlError() Audio::__impl::OpenAL::_clearAlError();
 
 namespace Audio {
 namespace __impl {
 namespace OpenAL {
 
-void _checkAlErrorAt(ALenum error, const char *filename, int lineno);
+void _checkAlErrorAt(ALenum error, const char *filename, int lineno, bool errors_fatal);
+void _checkAlcErrorAt(ALCdevice *device, const char *filename, int lineno, bool errors_fatal);
 void _clearAlError();
 ALenum asALFormat(const Format &format);
 

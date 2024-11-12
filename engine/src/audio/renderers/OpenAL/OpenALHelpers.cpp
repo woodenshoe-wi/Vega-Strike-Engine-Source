@@ -43,12 +43,55 @@ namespace Audio {
 namespace __impl {
 namespace OpenAL {
 
-void _checkAlErrorAt(ALenum error, const char *filename, int lineno) {
+void _checkAlErrorAt(ALenum error, const char *filename, int lineno, bool errors_fatal) {
     switch (error) {
         case AL_NO_ERROR :
             return;
         default: {
             const char *errdesc = (const char *) alGetString(error);
+            char s_lineno[32];
+            char s_errcode_buf[32];
+            const char *s_errcode;
+            sprintf(s_lineno, "%d", lineno);
+
+            switch (error) {
+                case AL_INVALID_NAME:
+                    s_errcode = "(Bad name)";
+                    break;
+                case AL_INVALID_ENUM:
+                    s_errcode = "(Bad enum)";
+                    break;
+                case AL_INVALID_VALUE:
+                    s_errcode = "(Bad value)";
+                    break;
+                case AL_INVALID_OPERATION:
+                    s_errcode = "(Invalid operation)";
+                    break;
+                case ALC_OUT_OF_MEMORY:
+                    s_errcode = "(Out of memory)";
+                    break;
+                default:
+                    sprintf(s_errcode_buf, "(0x%x)", error);
+                    s_errcode = s_errcode_buf;
+            };
+
+            std::string error("OpenAL error: ");
+            error += std::string(errdesc ? errdesc : "unknown") + s_errcode + " at " + filename + ":" + s_lineno;
+            VS_LOG_AND_FLUSH(error, (boost::format("%1%") % error));
+            if (errors_fatal) {
+                throw Exception(error);
+            }
+        }
+    }
+}
+
+void _checkAlcErrorAt(ALCdevice *device, const char *filename, int lineno, bool errors_fatal) {
+    ALCenum error = alcGetError(device);
+    switch (error) {
+        case ALC_NO_ERROR :
+            return;
+        default: {
+            const char *errdesc = (const char *) alcGetString(device, error);
             char s_lineno[32];
             char s_errcode_buf[32];
             const char *s_errcode;
@@ -75,10 +118,12 @@ void _checkAlErrorAt(ALenum error, const char *filename, int lineno) {
                     s_errcode = s_errcode_buf;
             };
 
-            std::string error("OpenAL error: ");
+            std::string error("OpenAL context error: ");
             error += std::string(errdesc ? errdesc : "unknown") + s_errcode + " at " + filename + ":" + s_lineno;
             VS_LOG_AND_FLUSH(error, (boost::format("%1%") % error));
-            throw Exception(error);
+            if (errors_fatal) {
+                throw Exception(error);
+            }
         }
     }
 }

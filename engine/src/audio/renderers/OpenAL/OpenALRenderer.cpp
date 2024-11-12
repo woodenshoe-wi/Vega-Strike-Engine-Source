@@ -145,7 +145,7 @@ struct RendererData {
             throw Exception("Trying to open a device without closing the previous one first");
         }
 
-        clearAlError();
+        alcGetError(NULL);
 
         if (deviceSpecifier == NULL) {
             #ifdef _WIN32
@@ -160,9 +160,9 @@ struct RendererData {
         alDevice = alcOpenDevice((ALCstring) (deviceSpecifier));
 
         if (!alDevice)
-            checkAlError();
+            checkAlcError(NULL);
         else
-            clearAlError();
+            alcGetError(alDevice);
     }
 
     void closeDevice() {
@@ -173,7 +173,7 @@ struct RendererData {
             unloadSounds();
             alcCloseDevice(alDevice);
             alDevice = NULL;
-            clearAlError();
+            alcGetError(NULL);
         }
     }
 
@@ -185,7 +185,7 @@ struct RendererData {
             throw Exception("Trying to open context without opening a device first");
         }
 
-        clearAlError();
+        alcGetError(alDevice);
 
         ALCint params[] = {
                 ALC_FREQUENCY, static_cast<ALCint>(format.sampleFrequency),
@@ -193,18 +193,26 @@ struct RendererData {
         };
 
         alContext = alcCreateContext(alDevice, params);
-        if (!alContext)
-            checkAlError();
+        if (!alContext) {
+            checkAlcError(alDevice);
+            checkAlcError(NULL);
+        }
         else
-            clearAlError();
+            alcGetError(alDevice);
 
         alcMakeContextCurrent(alContext);
-        checkAlError();
+        checkAlcError(alDevice);
+        // openal-soft implementation of alcMakeContextCurrent
+        // only sets errors to LastNullDeviceError
+        checkAlcError(NULL);
     }
 
     void commit() {
         alcProcessContext(alContext);
-        checkAlError();
+        checkAlcError(alDevice);
+        // openal-soft implementation of alcProcessContext
+        // only sets errors to LastNullDeviceError
+        checkAlcError(NULL);
     }
 
     void suspend() {
@@ -213,14 +221,18 @@ struct RendererData {
         checkAlError();
         alcMakeContextCurrent(alContext);
         alcSuspendContext(alContext);
-        checkAlError();
+        // If there is an error, log as a warning but don't throw an exception
+        // Not sure which of these will work
+        checkAlcWarning(alDevice); // Uses alcGetError(ALCdevice *device);
+        checkAlcWarning(NULL);
+        checkAlWarning();          // Uses alGetError(ALvoid);
     }
 
     void closeContext() {
         if (alContext) {
             alcMakeContextCurrent(NULL);
             alcDestroyContext(alContext);
-            clearAlError();
+            alcGetError(NULL);
             alContext = NULL;
         }
     }
